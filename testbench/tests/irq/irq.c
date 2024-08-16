@@ -2,13 +2,15 @@
 #include <stdint.h>
 
 // ============================================================================
-
+//asm volatile: 직접 어셈블리 명령어 실행
+//csrr rd csr : csr레지스터 값을 rd에 저장.
+//csrr res #csr 의 의미 즉 csr register 값을 res에 저장
 #define read_csr(csr) ({ \
     unsigned long res; \
     asm volatile ("csrr %0, " #csr : "=r"(res)); \
     res; \
 })
-
+//csrw #csr, val : val값을 csr register에 씀
 #define write_csr(csr, val) { \
     asm volatile ("csrw " #csr ", %0" : : "r"(val)); \
 }
@@ -46,7 +48,7 @@
 #define CORE_IRQ_SOFT       (4 << 8)
 
 extern uint32_t tohost;
-
+//interrupt trigger or disable
 void trigger_nmi_irq (int state) {
     uint32_t cmd = (state) ? CMD_CORE_IRQ_SET : CMD_CORE_IRQ_CLR;
     tohost = cmd | CORE_IRQ_NMI;
@@ -80,7 +82,8 @@ struct trap_data_t {
 
 volatile struct trap_data_t trap_data[32];
 volatile uint32_t trap_count = 0;
-
+//trap(예외)발생 시 현재 mstatus,mcause,mepc를 읽고 저장
+//인터럽트 라인 해제 후 trap정보를 trap_data에 저장
 void trap_handler () {
 
     uint32_t mstatus = read_csr(mstatus);
@@ -99,7 +102,7 @@ void trap_handler () {
         trap_count++;
     }
 }
-
+//NMI발생시 호출
 void nmi_handler () {
     // Handle NMIs as regular traps. For purpose of this test it is sufficient
     trap_handler();
@@ -113,18 +116,18 @@ int main () {
     printf("Hello VeeR\n");
 
     // Enable interrupts
-    unsigned long mie = read_csr(mie);
-    mie |= MIE_MEIE | MIE_MTIE | MIE_MSIE;
-    write_csr(mie, mie);
+    unsigned long mie = read_csr(mie); //mie변수에 mie register 값 저장.
+    mie |= MIE_MEIE | MIE_MTIE | MIE_MSIE; //mie 변수에 외부, 타이머, 소프트웨어 인터럽트 활성화 비트 추가
+    write_csr(mie, mie);//인터럽트 활성화한 값을 mie register에 저장.
 
     // ..............................
     // Set mstatus.MIE to 0. This should disable interrupts in M mode
     printf("Machine mode, MIE=0\n");
 
     unsigned long mstatus = read_csr(mstatus);
-    mstatus &= ~MSTATUS_MIE;
+    mstatus &= ~MSTATUS_MIE; //mstatus.mie bit --> 0 인터럽트 비활성화
     write_csr(mstatus, mstatus);
-
+    //인터럽트 비활성화 후 NMI,TIMER,SW interrupt trigger
     // NMI
     trigger_nmi_irq(1);
     printf(" NMI triggered\n");
@@ -144,11 +147,11 @@ int main () {
     // ..............................
     // Set mstatus.MIE to 1. This should enable interrupts in M mode
     printf("Machine mode, MIE=1\n");
-
+    
     mstatus  = read_csr(mstatus);
-    mstatus |= MSTATUS_MIE;
+    mstatus |= MSTATUS_MIE;//interrupt 활성화
     write_csr(mstatus, mstatus);
-
+    //인터럽트 활성화 후 아래의 interrupt trigger
     // NMI
     trigger_nmi_irq(1);
     printf(" NMI triggered\n");
@@ -207,7 +210,7 @@ int main () {
     printf("Going to user mode, MPIE=0\n");
 
     mstatus  = read_csr(mstatus);
-    mstatus &= ~MSTATUS_MPIE;
+    mstatus &= ~MSTATUS_MPIE; //MPIE(인터럽트 이전상태 저장)
     write_csr(mstatus, mstatus);
 
     // Go to user mode
