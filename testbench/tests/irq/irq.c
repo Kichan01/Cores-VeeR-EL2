@@ -14,20 +14,20 @@
 #define write_csr(csr, val) { \
     asm volatile ("csrw " #csr ", %0" : : "r"(val)); \
 }
-
+//MISA 20bit: U(user mode지원되는지 확인)
 #define MISA_U (1 << 20)
 
 #define MSTATUS_MPP_MASK    (3 << 11)
 #define MSTATUS_MPP_MACHINE (3 << 11)
 #define MSTATUS_MPP_USER    (0 << 11)
 #define MSTATUS_MPP_MPRV    (1 << 17)
-#define MSTATUS_MIE         (1 << 3)
-#define MSTATUS_MPIE        (1 << 7)
-
-#define MIE_MEIE            (1 << 11)
-#define MIE_MTIE            (1 << 7)
-#define MIE_MSIE            (1 << 3)
-
+#define MSTATUS_MIE         (1 << 3) //machine mode interrupt 활성화
+#define MSTATUS_MPIE        (1 << 7) //이전 인터럽트 활성화
+//MIE : interrupt 활성화 레지스터
+#define MIE_MEIE            (1 << 11) //외부
+#define MIE_MTIE            (1 << 7) //timer
+#define MIE_MSIE            (1 << 3) //SW
+//MCAUSE: 특정 interrupt, 예외 원인을 나타내는 레지스터
 #define MCAUSE_NMI          0x0
 #define MCAUSE_TIMER_M      0x80000007
 #define MCAUSE_SOFTINT_M    0x80000003
@@ -170,7 +170,7 @@ int main () {
 
     // ..............................
     // User mode not supported
-    if ((read_csr(misa) & MISA_U) == 0) {
+    if ((read_csr(misa) & MISA_U) == 0) { //MISA_U = 0 --> usermode 비활성화
         printf("WARNING: User mode not supported\n");
 
         // Report traps
@@ -208,7 +208,7 @@ int main () {
     // should be copied to MIE. This should not prevent interrupts from
     // occurring.
     printf("Going to user mode, MPIE=0\n");
-
+    //usermode로 전환 후에도 인터럽트가 올바르게 처리되는지 확인 
     mstatus  = read_csr(mstatus);
     mstatus &= ~MSTATUS_MPIE; //MPIE(인터럽트 이전상태 저장)
     write_csr(mstatus, mstatus);
@@ -225,7 +225,7 @@ int main () {
 
     return 0;
 }
-
+//user mode에서 interrupt trigger, 발생한 트랩 검사 후 시뮬레이션 종료
 __attribute__((noreturn)) void user_main () {
     printf("Hello VeeR in user mode\n");
 
