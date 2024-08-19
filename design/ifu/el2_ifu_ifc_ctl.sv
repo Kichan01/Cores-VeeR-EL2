@@ -96,7 +96,7 @@ import el2_pkg::*;
 
 
 
-   // Fetch address mux
+   // Fetch address mux. Fetch할 주소 결정
    // - flush
    // - Miss *or* flush during WFM (icache miss buffer is blocking)
    // - Sequential
@@ -109,10 +109,10 @@ if(pt.BTB_ENABLE==1) begin : genblock1
    assign sel_next_addr_bf = ~exu_flush_final & ifc_fetch_req_f & ~ifu_bp_hit_taken_f & ic_hit_f;
 
 
-   assign fetch_addr_bf[31:1] = ( ({31{exu_flush_final}} &  exu_flush_path_final[31:1]) | // FLUSH path
-                  ({31{sel_last_addr_bf}} & ifc_fetch_addr_f[31:1]) | // MISS path
-                  ({31{sel_btb_addr_bf}} & {ifu_bp_btb_target_f[31:1]})| // BTB target
-                  ({31{sel_next_addr_bf}} & {fetch_addr_next[31:1]})); // SEQ path
+ assign fetch_addr_bf[31:1] = ( ({31{exu_flush_final}} &  exu_flush_path_final[31:1]) | // FLUSH path 플러시 발생 --> fetch 주소가 flush경로로 설정
+                               ({31{sel_last_addr_bf}} & ifc_fetch_addr_f[31:1]) | // MISS path cache miss 발생 시 이전 fetch 주소로 설정
+                               ({31{sel_btb_addr_bf}} & {ifu_bp_btb_target_f[31:1]})| // BTB target branch예측에서 타겟 설정되면 BTB에서 제공된 타겟 주소로 설정
+                               ({31{sel_next_addr_bf}} & {fetch_addr_next[31:1]})); // SEQ path 그 외에는 다음 fetch주소로 설정
 
 
 end // if (pt.BTB_ENABLE=1)
